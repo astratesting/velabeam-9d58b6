@@ -1,0 +1,136 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  name         String?
+  workspaceId  String
+  workspace    Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  apiKeys      ApiKey[]
+  builds       Build[]
+  activities   Activity[]
+}
+
+model Workspace {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  users     User[]
+  leads     Lead[]
+  sites     Site[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Lead {
+  id           String    @id @default(cuid())
+  workspaceId  String
+  workspace    Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  businessName String
+  category     String
+  address      String
+  city         String
+  state        String
+  phone        String?
+  hasWebsite   Boolean   @default(false)
+  domainAge    Int?
+  googleRating Float?
+  reviewCount  Int?
+  lat          Float?
+  lng          Float?
+  source       String    @default("mock")
+  status       String    @default("new")
+  saved        Boolean   @default(false)
+  notes        String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  sites        Site[]
+  activities   Activity[]
+
+  @@index([workspaceId, status])
+  @@index([workspaceId, city])
+}
+
+model Site {
+  id           String   @id @default(cuid())
+  workspaceId  String
+  workspace    Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  leadId       String?
+  lead         Lead?    @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  businessName String
+  templateId   String
+  subdomain    String   @unique
+  status       String   @default("draft")
+  content      String   @default("{}")
+  theme        String   @default("{}")
+  publishedAt  DateTime?
+  deployCount  Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  builds       Build[]
+  deployments  Deployment[]
+
+  @@index([workspaceId, status])
+}
+
+model Build {
+  id        String   @id @default(cuid())
+  siteId    String
+  site      Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content   String   @default("{}")
+  createdAt DateTime @default(now())
+
+  @@index([siteId, createdAt])
+}
+
+model Deployment {
+  id        String   @id @default(cuid())
+  siteId    String
+  site      Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  url       String
+  status    String   @default("success")
+  createdAt DateTime @default(now())
+
+  @@index([siteId, createdAt])
+}
+
+model Activity {
+  id          String   @id @default(cuid())
+  workspaceId String
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  leadId      String?
+  lead        Lead?    @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  siteId      String?
+  type        String
+  message     String
+  meta        String?
+  createdAt   DateTime @default(now())
+
+  @@index([workspaceId, createdAt])
+}
+
+model ApiKey {
+  id          String    @id @default(cuid())
+  workspaceId String
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  hash        String    @unique
+  last4       String
+  lastUsedAt  DateTime?
+  revokedAt   DateTime?
+  createdAt   DateTime  @default(now())
+}
